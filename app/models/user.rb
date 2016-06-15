@@ -575,7 +575,7 @@ class User < Principal
         end
       end
     end
-    
+
     hash.each do |role, projects|
       projects.uniq!
     end

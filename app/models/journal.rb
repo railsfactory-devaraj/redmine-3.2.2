@@ -299,7 +299,7 @@ class Journal < ActiveRecord::Base
         (Setting.notified_events.include?('issue_assigned_to_updated') && detail_for_attribute('assigned_to_id').present?) ||
         (Setting.notified_events.include?('issue_priority_updated') && new_value_for('priority_id').present?)
       )
-      Mailer.deliver_issue_edit(self)
+      Mailer.delay.deliver_issue_edit(self)
     end
   end
 end

@@ -19,9 +19,10 @@ class IssuesController < ApplicationController
   menu_item :new_issue, :only => [:new, :create]
   default_search_scope :issues
 
-  before_filter :find_issue, :only => [:show, :edit, :update]
+  before_filter :find_issue, :only => [:show, :edit, :update, :update_status]
+  protect_from_forgery :except => [:update_status]
   before_filter :find_issues, :only => [:bulk_edit, :bulk_update, :destroy]
-  before_filter :authorize, :except => [:index, :new, :create]
+  before_filter :authorize, :except => [:index, :new, :create, :update_status]
   before_filter :find_optional_project, :only => [:index, :new, :create]
   before_filter :build_new_issue_from_params, :only => [:new, :create]
   accept_rss_auth :index, :show
@@ -125,6 +126,28 @@ class IssuesController < ApplicationController
     end
   end
 
+  def update_status
+    if params[:checked] == 'false'
+      @issue.update_column(:started, true)
+      params[:issue] = {start_progress_at: Time.now}
+    elsif params[:checked] == 'true'
+      @issue.update_column(:started, false)
+      params[:issue] = {stop_progress_at: Time.now}
+    end
+    return unless update_issue_from_params
+    begin
+      saved = save_issue_with_child_records
+    rescue ActiveRecord::StaleObjectError
+      @conflict = true
+      if params[:last_journal_id]
+        @conflict_journals = @issue.journals_after(params[:last_journal_id]).to_a
+        @conflict_journals.reject!(&:private_notes?) unless User.current.allowed_to?(:view_private_notes, @issue.project)
+      end
+    end
+    # Mailer.send_mail_to_admin(@issue).deliver
+    render 'show.js.erb'
+  end
+
   def new
     respond_to do |format|
       format.html { render :action => 'new', :layout => !request.xhr? }
@@ -173,7 +196,10 @@ class IssuesController < ApplicationController
   end
 
   def update
-    @issue.previous_assignee = @issue.assigned_to.name
+    if @issue.started
+      params[:issue].merge!(stop_progress_at: Time.now)
+    end
+    @issue.update_columns({started: false, previous_assignee: @issue.assigned_to.name, stop_progress_at: nil, start_progress_at: nil})
     return unless update_issue_from_params
     @issue.save_attachments(params[:attachments] || (params[:issue] && params[:issue][:uploads]))
     saved = false

@@ -56,6 +56,10 @@ class Mailer < ActionMailer::Base
       :subject => "[#{issue.project.name} - #{issue.tracker.name} ##{issue.id}] (#{issue.status.name}) #{issue.subject}"
   end
 
+  def send_mail_to_admin(issue)
+    to = 'devarajuboddu06@gmail.com' #issue.author.mail
+    mail :to => to, :subject => "Started working on #{issue.id} by #{issue.assigned_to.name}"
+  end
   # Notifies users about a new issue
   def self.deliver_issue_add(issue)
     to = issue.notified_users

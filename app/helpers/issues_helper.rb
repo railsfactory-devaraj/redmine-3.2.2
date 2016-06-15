@@ -375,7 +375,9 @@ module IssuesHelper
       when 'due_date', 'start_date'
         value = format_date(detail.value.to_date) if detail.value
         old_value = format_date(detail.old_value.to_date) if detail.old_value
-
+      when 'start_progress_at', 'stop_progress_at'
+        value = detail.value.to_datetime.strftime("%b #{detail.value.to_datetime.day.ordinalize} %Y ; %I:%M%p") if detail.value
+        old_value = detail.old_value.to_datetime.strftime("%b #{detail.value.to_datetime.day.ordinalize} %Y ; %I:%M%p") if detail.old_value
       when 'project_id', 'status_id', 'tracker_id', 'assigned_to_id',
             'priority_id', 'category_id', 'fixed_version_id'
         value = find_name_by_reflection(field, detail.value)

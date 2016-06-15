@@ -418,6 +418,8 @@ class Issue < ActiveRecord::Base
     'custom_fields',
     'lock_version',
     'notes',
+    'start_progress_at',
+    'stop_progress_at',
     :if => lambda {|issue, user| issue.new_record? || user.allowed_to?(:edit_issues, issue.project) }
 
   safe_attributes 'notes',
@@ -1679,32 +1681,34 @@ class Issue < ActiveRecord::Base
     if notify? && Setting.notified_events.include?('issue_added')
       Mailer.deliver_issue_add(self)
     end
-    content = self.created_on == self.updated_on ? "You have " : "#{self.previous_assignee} has reassigned"
-    message = "Hello "+self.assigned_to.name+','+"\n"+"#{content} #{self.tracker.name}, '#{self.subject}'. The status is #{self.status.name} and priority is #{ self.priority.name}"
-    @client = Twilio::REST::Client.new "AC1445b352eed9d789cedefd6946f90545", "d1567e70ecbf539551102942f9b6ecd9"
-    @phone = "+91#{self.assigned_to.phone}"
-    response = Twilio::TwiML::Response.new do |r|
-      r.Say message, voice: "alice"
+    if self.assigned_to.changed?
+      content = self.created_on == self.updated_on ? "You have " : "#{self.previous_assignee} has reassigned"
+      message = "Hello "+self.assigned_to.name+','+"\n"+"#{content} #{self.tracker.name}, '#{self.subject}'. The status is #{self.status.name} and priority is #{ self.priority.name}"
+      @client = Twilio::REST::Client.new "AC1445b352eed9d789cedefd6946f90545", "d1567e70ecbf539551102942f9b6ecd9"
+      @phone = "+91#{self.assigned_to.phone}"
+      response = Twilio::TwiML::Response.new do |r|
+        r.Say message, voice: "alice"
+      end
+      begin
+        file = File.open("#{Rails.root}/public/response.xml", 'w')
+        file << response.to_xml
+      rescue Exception => e
+      ensure
+        file.close unless file.nil?
+      end
+      if self.created_on == self.updated_on
+        @client.account.calls.create({
+          :from => "+12015094864",
+          :to => @phone,
+          :url => "http://84103cb3.ngrok.io/response.xml",
+          :method => 'GET',
+          :fallback_method => 'GET',
+          :status_callback_method => 'GET',
+          :record => 'false'
+        })
+      end
+      @client.messages.create(from: "+12015094864", to: @phone, body: message)
     end
-    begin
-      file = File.open("#{Rails.root}/public/response.xml", 'w')
-      file << response.to_xml
-    rescue Exception => e
-    ensure
-      file.close unless file.nil?
-    end
-    if self.created_on == self.updated_on
-      @client.account.calls.create({
-        :from => "+12015094864",
-        :to => @phone,
-        :url => "http://84103cb3.ngrok.io/response.xml", 
-        :method => 'GET',  
-        :fallback_method => 'GET',  
-        :status_callback_method => 'GET',    
-        :record => 'false'
-      })
-    end
-    @client.messages.create(from: "+12015094864", to: @phone, body: message)
   end
 
   handle_asynchronously :send_notification, :run_at => Proc.new { Time.now }
