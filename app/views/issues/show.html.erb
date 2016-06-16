@@ -1,7 +1,17 @@
 <%= render :partial => 'action_menu' %>
-
-<h2><%= issue_heading(@issue) %></h2>
-
+<div>
+  <h2><%= issue_heading(@issue) %></h2>
+    <% if session[:user_id].present? && @issue.assigned_to_id == session[:user_id] %>
+       <div class="onoffswitch">
+          <%= hidden_field_tag 'issue_id', @issue.id %>
+          <%= check_box_tag 'onoffswitch1', '',!@issue.started, class: 'onoffswitch-checkbox' %>
+          <label class="onoffswitch-label" for="onoffswitch1">
+              <span class="onoffswitch-inner"></span>
+              <span class="onoffswitch-switch"></span>
+          </label>
+      </div>
+    <% end %>
+</div>
 <div class="<%= @issue.css_classes %> details">
   <% if @prev_issue_id || @next_issue_id %>
     <div class="next-prev-links contextual">
@@ -160,3 +170,69 @@ end %>
 <% end %>
 
 <%= context_menu issues_context_menu_path %>
+
+<script type="text/javascript">
+  $('.onoffswitch-checkbox').click(function(){
+    var checked = $('#onoffswitch1').prop('checked');
+    var issue_id = $('#issue_id').val();
+    var params = 'checked='+checked
+    $.ajax({
+      url: '/issues/'+issue_id+'/udate-status',
+      type: 'post',
+      data: params
+    })
+  });
+</script>
+
+<style type="text/css">
+  .onoffswitch {
+    position: relative; width: 90px;
+    margin-left: 425px;
+    margin-top: -18px;
+    padding-top: -9px;
+    margin-bottom: 10px;
+    -webkit-user-select:none; -moz-user-select:none; -ms-user-select: none;
+    
+  }
+  .onoffswitch-checkbox {
+      display: none;
+  }
+  .onoffswitch-label {
+      display: block; overflow: hidden; cursor: pointer;
+      border: 2px solid #999999; border-radius: 20px;
+  }
+  .onoffswitch-inner {
+      display: block; width: 200%; margin-left: -100%;
+      transition: margin 0.3s ease-in 0s;
+  }
+  .onoffswitch-inner:before, .onoffswitch-inner:after {
+      display: block; float: left; width: 50%; height: 30px; padding: 0; line-height: 30px;
+      font-size: 14px; color: white; font-family: Trebuchet, Arial, sans-serif; font-weight: bold;
+      box-sizing: border-box;
+  }
+  .onoffswitch-inner:before {
+      content: "Start";
+      padding-left: 10px;
+      background-color: #00cc00; color: #FFFFFF;
+  }
+  .onoffswitch-inner:after {
+      content: "Stop";
+      padding-right: 10px;
+      background-color: #ff0000; color: #ffffff;
+      text-align: right;
+  }
+  .onoffswitch-switch {
+      display: block; width: 18px; margin: 6px;
+      background: #FFFFFF;
+      position: absolute; top: 0; bottom: 0;
+      right: 56px;
+      border: 2px solid #999999; border-radius: 20px;
+      transition: all 0.3s ease-in 0s; 
+  }
+  .onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-inner {
+      margin-left: 0;
+  }
+  .onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-switch {
+      right: 0px; 
+  }
+</style>

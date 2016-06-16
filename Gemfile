@@ -95,6 +95,8 @@ gem 'twilio-ruby'
 # Delayed jobs
 gem 'delayed_job_active_record'
 gem "daemons"
+gem "rails_best_practices"
+gem 'puma'
 group :development do
   gem "rdoc", ">= 2.4.2"
   gem "yard"
